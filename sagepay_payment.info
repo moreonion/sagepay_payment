@@ -1,0 +1,9 @@
+name = Sage Pay Payment method
+description = Provides payment methods to transfer money using the payment provider wwww.sagepay.com
+core = 7.x
+
+dependencies[] = payment
+dependencies[] = payment_forms
+dependencies[] = xautoload
+dependencies[] = webform_paymethod_select
+dependencies[] = libraries

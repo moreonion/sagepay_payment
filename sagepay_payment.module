@@ -1,0 +1,134 @@
+<?php
+
+/**
+ * Implements hook_payment_method_controller_info().
+ */
+function sagepay_payment_payment_method_controller_info() {
+  return array(
+    '\Drupal\sagepay_payment\Controller',
+  );
+}
+
+/**
+ * Implements hook_menu().
+ */
+function sagepay_payment_menu() {
+  $items = array();
+
+  $items['sagepay_payment/notify'] = array(
+    'title' => 'Notification',
+    'page callback' => 'sagepay_payment_notification_callback',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
+
+  return $items;
+}
+
+/**
+* Implements hook_libraries_info().
+*
+* for stripes php wrapper library.
+*/
+function sagepay_payment_libraries_info() {
+  $libraries['sagepay-php'] = array(
+    'name' => 'Sagepay',
+    'vendor url' => 'https://sagepay.com//',
+    'download url' => 'http://www.sagepay.co.uk/file/9981/download-document/VspPHPKit.zip',
+    'version' => '3.0.0',
+    'files' => array(
+      'php' => array('sagepay.php')
+    )
+  );
+  return $libraries;
+}
+
+
+function sagepay_payment_notification_callback() {
+  watchdog('sagepay_payment', 'notified!');
+  watchdog('sagepay_payment', var_export($_POST, TRUE));
+
+  /* Status
+OK
+, if the transaction was authorised.
+
+PENDING
+(for European Payment Types only), if the transaction has yet to be accepted or
+rejected
+
+NOTAUTHED
+,
+if the authorisation was failed by the bank.
+
+ABORT
+, if
+the user decided to cancel the transaction whilst on our payment pages.
+
+REJECTED
+, if your fraud screening rules were not met.
+
+ERROR
+, if an error has occurred at Sage Pay. These are very infrequent, but your site should
+handle them anyway. They normally
+indicate a problem with bank connectivity.
+
+
+//check VPSTxID and VPSSignture
+
+  array(
+    'VPSProtocol' => '3.00',
+ 'TxType' => 'PAYMENT',
+ 'VendorTxCode' => 'moreonion-PAYMENT-1413378512-677327275',
+ 'VPSTxId' => '{A4C7D509-BBD6-A1F7-595E-9B5AA644A0FF}',
+ 'Status' => 'OK',
+ 'StatusDetail' => '0000 : The Authorisation was Successful.',
+ 'TxAuthNo' => '40026',
+ 'AVSCV2' => 'ALL MATCH',
+ 'AddressResult' => 'MATCHED',
+ 'PostCodeResult' => 'MATCHED',
+ 'CV2Result' => 'MATCHED',
+ 'GiftAid' => '0',
+ '3DSecureStatus' => 'NOTCHECKED',
+ 'CardType' => 'VISA',
+ 'Last4Digits' => '0006',
+ 'VPSSignature' => '31F6586DA904C8E3D862939A68E0AE10',
+ 'DeclineCode' => '00',
+ 'ExpiryDate' => '1027',
+ 'BankAuthCode' => '999777',
+ )
+*/
+  echo "Status=OK\nRedirectURL=http://minimal.camp.more-onion.at";
+}
+
+/**
+ * Implements hook_entity_load().
+ */
+function sagepay_payment_entity_load(array $entities, $entity_type) {
+  if ($entity_type == 'payment_method') {
+    \Drupal\sagepay_payment\Controller::load($entities);
+  }
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_ACTION().
+ */
+function sagepay_payment_payment_method_insert(PaymentMethod $method) {
+  if ($method->controller instanceof \Drupal\sagepay_payment\Controller)
+    $method->controller->insert($method);
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_ACTION().
+ */
+function sagepay_payment_payment_method_update(PaymentMethod $method) {
+  if ($method->controller instanceof \Drupal\sagepay_payment\Controller)
+    $method->controller->update($method);
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_ACTION().
+ */
+function sagepay_payment_payment_method_delete($method) {
+  if ($method->controller instanceof \Drupal\sagepay_payment\Controller)
+    $method->controller->delete($method);
+}

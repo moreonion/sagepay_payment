@@ -1,0 +1,64 @@
+<?php
+
+/**
+ * @file
+ * Installation and uninstallation functions.
+ */
+
+/**
+ * Implements hook_schema()
+ *
+ * Adds the schema for the sagepay_payment_payment_controllers table which
+ * stores serialized PaymentMethodController objects.
+ */
+function sagepay_payment_schema() {
+  $schema['sagepay_payment_payment_method_controller'] = array(
+    'fields' => array(
+      'testmode' => array(
+        'type'     => 'int',
+        'not null' => TRUE,
+        'default'  => 0,
+      ),
+      'partnerid' => array(
+        'type'     => 'text',
+      ),
+      'pmid' => array(
+        'type'     => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default'  => 0,
+      ),
+    ),
+    'primary key' => array('pmid'),
+    'unique keys' => array(
+      'pmid' => array('pmid'),
+    ),
+  );
+  $schema['sagepay_payment_payments'] = array(
+    'fields' => array(
+      'pid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+      ),
+      'vpstxid' => array(
+        'description' => 'Sagepays transaction ID',
+        'type'        => 'varchar',
+        'length'      => 40,
+        'not null'    => TRUE,
+        'unique'      => TRUE,
+      ),
+    ),
+    'foreign keys' => array(
+      'payment' => array(
+        'table'   => 'payment',
+        'columns' => array('pid' => 'pid'),
+      ),
+    ),
+    'primary key' => array('pid'),
+    'unique keys' => array(
+      'pid' => array('pid'),
+    ),
+  );
+  return $schema;
+}
