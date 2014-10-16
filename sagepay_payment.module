@@ -45,8 +45,6 @@ function sagepay_payment_libraries_info() {
 
 
 function sagepay_payment_notification_callback() {
-  watchdog('sagepay_payment', 'notified!');
-  watchdog('sagepay_payment', var_export($_POST, TRUE));
 
   /* Status
 OK
@@ -73,7 +71,7 @@ handle them anyway. They normally
 indicate a problem with bank connectivity.
 
 
-//check VPSTxID and VPSSignture
+// @TODO check VPSTxID and VPSSignature
 
   array(
     'VPSProtocol' => '3.00',
@@ -97,7 +95,15 @@ indicate a problem with bank connectivity.
  'BankAuthCode' => '999777',
  )
 */
-  echo "Status=OK\nRedirectURL=http://minimal.camp.more-onion.at";
+  $vpstxid = check_plain($_POST['VPSTxId']);
+  $query = db_select('sagepay_payment_payments', 's');
+  $query->join('payment', 'p', 's.pid = p.pid');
+  $query->fields('s')
+        ->fields('p')
+        ->condition('vpstxid', $vpstxid);
+  $payment = $query->execute()->fetchAssoc();
+  $url = unserialize($result['context_data'])['context']->getSuccessUrl();
+  echo "Status=OK\nRedirectURL=" . $url;
 }
 
 /**

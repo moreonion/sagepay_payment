@@ -16,17 +16,67 @@ class Controller extends \PaymentMethodController {
     $this->payment_method_configuration_form_elements_callback = '\Drupal\sagepay_payment\configuration_form';
   }
 
-  public function validate(\Payment $payment, \PaymentMethod $payment_method, $strict) {
-    // convert amount to cents.
-    foreach ($payment->line_items as $name => &$line_item) {
-      $line_item->amount = $line_item->amount * 100;
-    }
-  }
-
   public function execute(\Payment $payment) {
     libraries_load('sagepay-php');
-
     $context = &$payment->context_data['context'];
+    $test_mode = $payment->method->controller_data['testmode'];
+    $partner_id = $payment->method->controller_data['partnerid'];
+
+    $config = \SagepaySettings::getInstance(
+      array(
+        'env' => $test_mode ? 'test': 'live',
+        'currency' => $payment->currency_code,
+        'vendorName' => 'moreonion',
+        'partnerId' => isset($partner_id) ? $partner_id : '',
+        'siteFqdns' => array(
+          'live' => $GLOBALS['base_url'],
+          'test' => $GLOBALS['base_url'],
+        ),
+        'serverNotificationUrl' => '/sagepay_payment/notify',
+        'customerPasswordSalt' => drupal_get_hash_salt(),
+        'website' => $GLOBALS['base_url'],
+      ),
+      false
+    );
+
+    $basket = new \SagepayBasket();
+    $basket->setDescription($payment->description);
+
+    $item = new \SagepayItem();
+    $item->setDescription($payment->description);
+    $item->setUnitNetAmount($payment->totalAmount(TRUE));
+    $item->setQuantity(1);
+    $basket->addItem($item);
+
+    $address = new \SagepayCustomerDetails();
+    $address->firstname = $context->value('first_name');
+    $address->lastname = $context->value('last_name');
+    $address->email = $context->value('email');
+
+    // TODO
+    $address->address1 = '88';
+    $address->address2 = '';
+    $address->phone = '';
+    $address->city = 'Vienna';
+    $address->postcode = '412';
+    $address->country = 'AT';
+    $address->state = 'Vienna';
+
+    $api = \SagepayApiFactory::create('server', $config);
+    $api->setBasket($basket);
+    $api->addAddress($address);
+    $api->addAddress($address);
+    $result = $api->createRequest();
+
+    $payment->setStatus(new \PaymentStatusItem(PAYMENT_STATUS_PENDING));
+    entity_save('payment', $payment);
+
+    $params = array(
+      'pid' => $payment->pid,
+      'vpstxid' => $result['VPSTxId'],
+    );
+    drupal_write_record('sagepay_payment_payments', $params);
+    $payment->form_state['redirect'] = $result['NextURL'];
   }
 
   /**
