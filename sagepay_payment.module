@@ -43,67 +43,65 @@ function sagepay_payment_libraries_info() {
   return $libraries;
 }
 
+function sagepay_payment_check_signature($vendor_name, $security_key, $data) {
+  $data['VendorName'] = $vendor_name;
+  $data['SecurityKey'] = $security_key;
+
+  $keys = array(
+    'VPSTxId', 'VendorTxCode', 'Status', 'TxAuthNo', 'VendorName', 'AVSCV2',
+    'SecurityKey', 'AddressResult', 'PostCodeResult', 'CV2Result', 'GiftAid',
+    '3DSecureStatus', 'CAVV', 'AddressStatus', 'PayerStatus', 'CardType',
+    'Last4Digits', 'DeclineCode', 'ExpiryDate', 'FraudResponse', 'BankAuthCode'
+  );
+  $str = '';
+  foreach ($keys as $key) {
+    $str .= $data[$key];
+  }
+  return strtoupper(md5($str)) === $data['VPSSignature'];
+}
 
 function sagepay_payment_notification_callback() {
+  switch ($_POST['Status']) {
+    case 'OK': // if the transaction was authorised.
+    case 'PENDING': // (for European Payment Types only), if the transaction
+      // ...has yet to be accepted or rejected.
+      $vpstxid = check_plain($_POST['VPSTxId']);
+      $query = db_select('sagepay_payment_payments', 's');
+      $query->join('payment', 'p', 's.pid = p.pid');
+      $query->join('sagepay_payment_payment_method_controller', 'c', 'p.pmid = c.pmid');
+      $query->fields('s')
+            ->fields('p', array('context_data'))
+            ->fields('c', array('vendorname'))
+            ->condition('vpstxid', $vpstxid);
+      $payment = $query->execute()->fetchAssoc();
 
-  /* Status
-OK
-, if the transaction was authorised.
-
-PENDING
-(for European Payment Types only), if the transaction has yet to be accepted or
-rejected
-
-NOTAUTHED
-,
-if the authorisation was failed by the bank.
-
-ABORT
-, if
-the user decided to cancel the transaction whilst on our payment pages.
-
-REJECTED
-, if your fraud screening rules were not met.
-
-ERROR
-, if an error has occurred at Sage Pay. These are very infrequent, but your site should
-handle them anyway. They normally
-indicate a problem with bank connectivity.
+      if (sagepay_payment_check_signature(
+          $payment['vendorname'],
+          $payment['securitykey'],
+          $_POST)) {
+        $status = 'OK';
+        $url = unserialize($payment['context_data'])['context']->getSuccessUrl();
+      } else {
+        $status = 'ERROR';
+        $url = $GLOBALS['base_url'] . '/sagepay_payment/error';
+      }
+      echo 'Status=' . $status . PHP_EOL . 'RedirectURL=' . $url;
+      break;
+    case 'NOTAUTHED': // if the authorisation was failed by the bank.
+    case 'REJECTED': // if your fraud screening rules were not met.
 
+      break;
+    case 'ABORT': // if the user decided to cancel the transaction whilst
+      // ...on our payment pages.
 
-// @TODO check VPSTxID and VPSSignature
+      break;
+    case 'ERROR': // if an error has occurred at Sage Pay. These are very
+      // infrequent, but your site should handle them anyway. They normally
+      // indicate a problem with bank connectivity.
+    default:
 
-  array(
-    'VPSProtocol' => '3.00',
- 'TxType' => 'PAYMENT',
- 'VendorTxCode' => 'moreonion-PAYMENT-1413378512-677327275',
- 'VPSTxId' => '{A4C7D509-BBD6-A1F7-595E-9B5AA644A0FF}',
- 'Status' => 'OK',
- 'StatusDetail' => '0000 : The Authorisation was Successful.',
- 'TxAuthNo' => '40026',
- 'AVSCV2' => 'ALL MATCH',
- 'AddressResult' => 'MATCHED',
- 'PostCodeResult' => 'MATCHED',
- 'CV2Result' => 'MATCHED',
- 'GiftAid' => '0',
- '3DSecureStatus' => 'NOTCHECKED',
- 'CardType' => 'VISA',
- 'Last4Digits' => '0006',
- 'VPSSignature' => '31F6586DA904C8E3D862939A68E0AE10',
- 'DeclineCode' => '00',
- 'ExpiryDate' => '1027',
- 'BankAuthCode' => '999777',
- )
-*/
-  $vpstxid = check_plain($_POST['VPSTxId']);
-  $query = db_select('sagepay_payment_payments', 's');
-  $query->join('payment', 'p', 's.pid = p.pid');
-  $query->fields('s')
-        ->fields('p')
-        ->condition('vpstxid', $vpstxid);
-  $payment = $query->execute()->fetchAssoc();
-  $url = unserialize($result['context_data'])['context']->getSuccessUrl();
-  echo "Status=OK\nRedirectURL=" . $url;
+      break;
+  }
 }
 
 /**

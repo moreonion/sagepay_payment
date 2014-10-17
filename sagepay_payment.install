@@ -19,6 +19,10 @@ function sagepay_payment_schema() {
         'not null' => TRUE,
         'default'  => 0,
       ),
+      'vendorname' => array(
+        'type'     => 'text',
+        'not null' => TRUE,
+      ),
       'partnerid' => array(
         'type'     => 'text',
       ),
@@ -47,6 +51,12 @@ function sagepay_payment_schema() {
         'length'      => 40,
         'not null'    => TRUE,
         'unique'      => TRUE,
+      ),
+      'securitykey' => array(
+        'description' => 'Sagepays security key',
+        'type'        => 'varchar',
+        'length'      => 12,
+        'not null'    => TRUE,
       ),
     ),
     'foreign keys' => array(
