@@ -21,12 +21,13 @@ class Controller extends \PaymentMethodController {
     $context = &$payment->context_data['context'];
     $test_mode = $payment->method->controller_data['testmode'];
     $partner_id = $payment->method->controller_data['partnerid'];
+    $vendor_name = $payment->method->controller_data['vendorname'];
 
     $config = \SagepaySettings::getInstance(
       array(
         'env' => $test_mode ? 'test': 'live',
         'currency' => $payment->currency_code,
-        'vendorName' => 'moreonion',
+        'vendorName' => $vendor_name,
         'partnerId' => isset($partner_id) ? $partner_id : '',
         'siteFqdns' => array(
           'live' => $GLOBALS['base_url'],
@@ -155,6 +156,13 @@ function configuration_form(array $form, array &$form_state) {
     '#default_value' => isset($controller_data['testmode']) ? $controller_data['testmode'] : '',
   );
 
+  $form['vendorname'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Vendor name'),
+    '#required' => true,
+    '#default_value' => isset($controller_data['vendorname']) ? $controller_data['vendorname'] : '',
+  );
+
   $form['partnerid'] = array(
     '#type' => 'textfield',
     '#title' => t('Partner ID'),
@@ -173,4 +181,5 @@ function configuration_form_validate(array $element, array &$form_state) {
   $values = drupal_array_get_nested_value($form_state['values'], $element['#parents']);
   $form_state['payment_method']->controller_data['testmode'] = $values['testmode'];
   $form_state['payment_method']->controller_data['partnerid'] = $values['partnerid'];
+  $form_state['payment_method']->controller_data['vendorname'] = $values['vendorname'];
 }
