@@ -53,14 +53,15 @@ class Controller extends \PaymentMethodController {
     $address->lastname = $context->value('last_name');
     $address->email = $context->value('email');
 
-    // TODO
-    $address->address1 = '88';
-    $address->address2 = '';
-    $address->phone = '';
-    $address->city = 'Vienna';
-    $address->postcode = '412';
-    $address->country = 'AT';
-    $address->state = 'Vienna';
+    $address->address1 = $context->value('street_address');
+    $address->phone = $context->value('mobile_number');
+    $address->city = $context->value('city');
+    $address->postcode = $context->value('zip_code');
+    $address->country = $context->value('country');
+    $address->state = $context->value('state');
+    if ($address->country === 'GB') {
+      $address->country = 'UK';
+    };
 
     $api = \SagepayApiFactory::create('server', $config);
     $api->setBasket($basket);
