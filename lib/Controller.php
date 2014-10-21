@@ -5,7 +5,8 @@ namespace Drupal\sagepay_payment;
 class Controller extends \PaymentMethodController {
   public $controller_data_defaults = array(
     'testmode' => '0',
-    'partnerid'  => '',
+    'partnerid' => '',
+    'vendorname' => ''
   );
 
   public function __construct() {
