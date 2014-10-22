@@ -69,20 +69,20 @@ class Controller extends \PaymentMethodController {
     $api->addAddress($address);
     $api->addAddress($address);
     $result = $api->createRequest();
-    if ($result['Status'] !== 'OK') {
+    if ($result['Status'] == 'OK') {
+      $payment->setStatus(new \PaymentStatusItem(PAYMENT_STATUS_PENDING));
+      entity_save('payment', $payment);
+      $params = array(
+        'pid' => $payment->pid,
+        'securitykey' => $result['SecurityKey'],
+        'vpstxid' => $result['VPSTxId'],
+      );
+      drupal_write_record('sagepay_payment_payments', $params);
+      $payment->form_state['redirect'] = $result['NextURL'];
+    } else {
       $payment->setStatus(new \PaymentStatusItem(PAYMENT_STATUS_FAILED));
       entity_save('payment', $payment);
-      throw new Exception('Sagepay Error: ' . var_export($result, TRUE));
     }
-    $payment->setStatus(new \PaymentStatusItem(PAYMENT_STATUS_PENDING));
-    entity_save('payment', $payment);
-    $params = array(
-      'pid' => $payment->pid,
-      'securitykey' => $result['SecurityKey'],
-      'vpstxid' => $result['VPSTxId'],
-    );
-    drupal_write_record('sagepay_payment_payments', $params);
-    $payment->form_state['redirect'] = $result['NextURL'];
   }
 
   /**
