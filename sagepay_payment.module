@@ -21,6 +21,15 @@ function sagepay_payment_menu() {
     'access callback' => TRUE,
     'type' => MENU_CALLBACK,
   );
+  
+  $items['sagepay_payment/finish/%entity_object'] = array(
+    'title' => 'Notification',
+    'page callback' => 'sagepay_payment_finish_callback',
+    'load arguments' => array('payment'),
+    'page arguments' => array(2),
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
 
   return $items;
 }
@@ -66,42 +75,43 @@ function sagepay_payment_notification_callback() {
     case 'PENDING': // (for European Payment Types only), if the transaction
       // ...has yet to be accepted or rejected.
       $vpstxid = check_plain($_POST['VPSTxId']);
-      $query = db_select('sagepay_payment_payments', 's');
-      $query->join('payment', 'p', 's.pid = p.pid');
-      $query->join('sagepay_payment_payment_method_controller', 'c', 'p.pmid = c.pmid');
-      $query->fields('s')
-            ->fields('p', array('context_data'))
-            ->fields('c', array('vendorname'))
-            ->condition('vpstxid', $vpstxid);
-      $payment = $query->execute()->fetchAssoc();
+      $pid = db_select('sagepay_payment_payments', 's')
+        ->condition('vpstxid', $vpstxid)
+        ->fields('s', array('pid'))
+        ->execute()
+        ->fetchField();
+        
+      $payment = entity_load('payment', array($pid))[$pid];
 
       if (sagepay_payment_check_signature(
-          $payment['vendorname'],
-          $payment['securitykey'],
+          $payment->method->controller_data['vendorname'],
+          $payment->method->controller_data['securitykey'],
           $_POST)) {
+        $payment->setStatus(new \PaymentStatusItem(PAYMENT_STATUS_SUCCESS));
         $status = 'OK';
-        $url = unserialize($payment['context_data'])['context']->getSuccessUrl();
       } else {
+        $payment->setStatus(new \PaymentStatusItem(PAYMENT_STATUS_FAILED));
         $status = 'ERROR';
-        $url = $GLOBALS['base_url'] . '/sagepay_payment/error';
       }
-      echo 'Status=' . $status . PHP_EOL . 'RedirectURL=' . $url;
       break;
     case 'NOTAUTHED': // if the authorisation was failed by the bank.
     case 'REJECTED': // if your fraud screening rules were not met.
-
-      break;
     case 'ABORT': // if the user decided to cancel the transaction whilst
       // ...on our payment pages.
-
-      break;
     case 'ERROR': // if an error has occurred at Sage Pay. These are very
       // infrequent, but your site should handle them anyway. They normally
       // indicate a problem with bank connectivity.
     default:
-
+      $payment->setStatus(new \PaymentStatusItem(PAYMENT_STATUS_FAILED));
+      $status = 'ERROR';
       break;
   }
+  entity_save('payment', $payment);
+  echo 'Status=' . $status . PHP_EOL . 'RedirectURL=' . $GLOBALS['base_url'] . '/sagepay_payment/finish/' . $payment->pid;
+}
+
+function sagepay_payment_finish_callback($payment) {
+  $payment->finish();
 }
 
 /**

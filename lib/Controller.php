@@ -54,11 +54,10 @@ class Controller extends \PaymentMethodController {
     $address->firstname = $context->value('first_name');
     $address->lastname = $context->value('last_name');
     $address->email = $context->value('email');
-
-    $address->address1 = $context->value('street_address');
+    $address->address1 = $test_mode ? '88' : $context->value('street_address');
     $address->phone = $context->value('mobile_number');
     $address->city = $context->value('city');
-    $address->postcode = $context->value('zip_code');
+    $address->postcode = $test_mode ? '412' : $context->value('zip_code');
     $address->country = $context->value('country');
     $address->state = $context->value('state');
     if ($address->country === 'GB') {
@@ -70,12 +69,16 @@ class Controller extends \PaymentMethodController {
     $api->addAddress($address);
     $api->addAddress($address);
     $result = $api->createRequest();
-
+    if ($result['Status'] !== 'OK') {
+      $payment->setStatus(new \PaymentStatusItem(PAYMENT_STATUS_FAILED));
+      entity_save('payment', $payment);
+      throw new Exception('Sagepay Error: ' . var_export($result, TRUE));
+    }
     $payment->setStatus(new \PaymentStatusItem(PAYMENT_STATUS_PENDING));
     entity_save('payment', $payment);
-
     $params = array(
       'pid' => $payment->pid,
+      'securitykey' => $result['SecurityKey'],
       'vpstxid' => $result['VPSTxId'],
     );
     drupal_write_record('sagepay_payment_payments', $params);
