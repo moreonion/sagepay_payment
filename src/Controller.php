@@ -6,12 +6,13 @@ class Controller extends \PaymentMethodController {
   public $controller_data_defaults = array(
     'testmode' => '0',
     'partnerid' => '',
-    'vendorname' => ''
+    'vendorname' => '',
+    'personal_data' => array(),
   );
 
   public function __construct() {
     $this->title = t('Sage Pay');
-    $this->form = new \Drupal\payment_forms\OnlineBankingForm();
+    $this->form = new RedirectForm();
 
     $this->payment_configuration_form_elements_callback = 'payment_forms_method_form';
     $this->payment_method_configuration_form_elements_callback = '\Drupal\sagepay_payment\configuration_form';
@@ -19,6 +20,7 @@ class Controller extends \PaymentMethodController {
 
   public function execute(\Payment $payment) {
     libraries_load('sagepay-php');
+    $md = $payment->method_data;
     $context = &$payment->context_data['context'];
     $test_mode = $payment->method->controller_data['testmode'];
     $partner_id = $payment->method->controller_data['partnerid'];
@@ -51,15 +53,15 @@ class Controller extends \PaymentMethodController {
     $basket->addItem($item);
 
     $address = new \SagepayCustomerDetails();
-    $address->firstname = $context->value('first_name');
-    $address->lastname = $context->value('last_name');
-    $address->email = $context->value('email');
-    $address->address1 = $test_mode ? '88' : $context->value('street_address');
-    $address->phone = $context->value('mobile_number');
-    $address->city = $context->value('city');
-    $address->postcode = $test_mode ? '412' : $context->value('zip_code');
-    $address->country = $context->value('country');
-    $address->state = $context->value('state');
+    $address->firstname = $md['firstname'];
+    $address->lastname = $md['lastname'];
+    $address->email = $md['email'];
+    $address->address1 = $test_mode ? '88' : $md['address']['address1'];
+    $address->phone = $md['phone'];
+    $address->city = $md['address']['city'];
+    $address->postcode = $test_mode ? '412' : $md['address']['postcode'];
+    $address->country = $md['address']['country'];
+    $address->state = $md['address']['state'];
     if ($address->country === 'GB') {
       $address->country = 'UK';
     };
@@ -104,7 +106,9 @@ class Controller extends \PaymentMethodController {
         $method = $entities[$data['pmid']];
         unset($data['pmid']);
         $method->controller_data = (array) $data;
+        $method->controller_data['personal_data'] = unserialize($data['personal_data']);
         $method->controller_data += $method->controller->controller_data_defaults;
+        $method->controller_data['personal_data'] += $method->controller->controller_data_defaults['personal_data'];
       }
     }
   }
@@ -116,6 +120,7 @@ class Controller extends \PaymentMethodController {
     $method->controller_data += $this->controller_data_defaults;
     $query = db_insert('sagepay_payment_payment_method_controller');
     $values = array_merge($method->controller_data, array('pmid' => $method->pmid));
+    $values['personal_data'] = serialize($values['personal_data']);
     $query->fields($values);
     $query->execute();
   }
@@ -126,6 +131,7 @@ class Controller extends \PaymentMethodController {
   public function update($method) {
     $query = db_update('sagepay_payment_payment_method_controller');
     $values = array_merge($method->controller_data, array('pmid' => $method->pmid));
+    $values['personal_data'] = serialize($values['personal_data']);
     $query->fields($values);
     $query->condition('pmid', $method->pmid);
     $query->execute();
@@ -147,13 +153,15 @@ class Controller extends \PaymentMethodController {
  *   A Drupal form.
  */
 function configuration_form(array $form, array &$form_state) {
-  $controller_data = $form_state['payment_method']->controller_data;
+  $method = $form_state['payment_method'];
+  $controller_data = $method->controller_data + $method->controller->controller_data_defaults;
 
   $library = libraries_detect('sagepay-php');
   if (empty($library['installed'])) {
     drupal_set_message($library['error message'], 'error', FALSE);
   }
 
+  $form['#tree'] = TRUE;
   $form['testmode'] = array(
     '#type' => 'checkbox',
     '#title' => t('test mode'),
@@ -174,6 +182,63 @@ function configuration_form(array $form, array &$form_state) {
     '#default_value' => isset($controller_data['partnerid']) ? $controller_data['partnerid'] : '',
   );
 
+  $form['personal_data'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Personal data'),
+    '#description' => t('Configure how personal data can be mapped from the payment context.'),
+  );
+
+  $display_options = array(
+    'ifnotset' => t('Show field if it is not available from the context.'),
+    'always' => t('Always show the field - prefill with context values.'),
+  );
+  $non_mandatory = array(
+    'hidden' => t("Don't display, use values from context if available."),
+  );
+  $extra = RedirectForm::extraElements();
+  $flat = RedirectForm::flatten($extra);
+
+  foreach ($extra as $key => &$element) {
+    $element['#top_level'] = TRUE;
+  }
+
+  $stored = &$controller_data['personal_data'];
+  foreach (RedirectForm::flatten($extra) as $key => &$element) {
+    $defaults = $stored[$key] + array('display' => 'ifnotset', 'keys' => array($key), 'mandatory' => FALSE);
+    $form['personal_data'][$key] = array(
+      '#type' => 'fieldset',
+      '#title' => $element['#title'],
+    );
+    $required = !empty($element['#required']);
+    $defaults['mandatory'] = $defaults['mandatory'] || $required;
+    $id = drupal_html_id('controller_data_' . $key);
+    if (!empty($element['#top_level'])) {
+      $form['personal_data'][$key]['display'] = array(
+        '#type' => 'select',
+        '#title' => t('Display'),
+        '#options' => ($required ? array() : $non_mandatory) + $display_options,
+        '#default_value' => $defaults['display'],
+        '#id' => $id,
+      );
+    }
+    $form['personal_data'][$key]['mandatory'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Mandatory'),
+      '#states' => array(
+        'disabled' => array(
+          "#$id" => array('value' => 'hidden'),
+        ),
+      ),
+      '#default_value' => $defaults['mandatory'],
+      '#access' => !$required,
+    );
+    $form['personal_data'][$key]['keys'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Context keys'),
+      '#description' => t('When building the form these (comma separated) keys are used to ask the Payment Context for a (default) value for this field.'),
+      '#default_value' => implode(', ', $defaults['keys']),
+    );
+  }
   return $form;
 }
 
@@ -183,7 +248,12 @@ function configuration_form(array $form, array &$form_state) {
  */
 function configuration_form_validate(array $element, array &$form_state) {
   $values = drupal_array_get_nested_value($form_state['values'], $element['#parents']);
-  $form_state['payment_method']->controller_data['testmode'] = $values['testmode'];
-  $form_state['payment_method']->controller_data['partnerid'] = $values['partnerid'];
-  $form_state['payment_method']->controller_data['vendorname'] = $values['vendorname'];
+  $data = &$form_state['payment_method']->controller_data;
+  $data['testmode'] = $values['testmode'];
+  $data['partnerid'] = $values['partnerid'];
+  $data['vendorname'] = $values['vendorname'];
+  $data['personal_data'] = $values['personal_data'];
+  foreach ($data['personal_data'] as &$field) {
+    $field['keys'] = array_map('trim', explode(',', $field['keys']));
+  }
 }

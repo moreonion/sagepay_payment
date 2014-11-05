@@ -14,6 +14,12 @@
 function sagepay_payment_schema() {
   $schema['sagepay_payment_payment_method_controller'] = array(
     'fields' => array(
+      'pmid' => array(
+        'type'     => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default'  => 0,
+      ),
       'testmode' => array(
         'type'     => 'int',
         'not null' => TRUE,
@@ -26,17 +32,11 @@ function sagepay_payment_schema() {
       'partnerid' => array(
         'type'     => 'text',
       ),
-      'pmid' => array(
-        'type'     => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default'  => 0,
+      'personal_data' => array(
+        'type' => 'text',
       ),
     ),
     'primary key' => array('pmid'),
-    'unique keys' => array(
-      'pmid' => array('pmid'),
-    ),
   );
   $schema['sagepay_payment_payments'] = array(
     'fields' => array(
@@ -66,9 +66,6 @@ function sagepay_payment_schema() {
       ),
     ),
     'primary key' => array('pid'),
-    'unique keys' => array(
-      'pid' => array('pid'),
-    ),
   );
   return $schema;
 }
