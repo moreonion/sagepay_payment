@@ -196,15 +196,16 @@ function configuration_form(array $form, array &$form_state) {
     'hidden' => t("Don't display, use values from context if available."),
   );
   $extra = RedirectForm::extraElements();
-  $flat = RedirectForm::flatten($extra);
 
   foreach ($extra as $key => &$element) {
     $element['#top_level'] = TRUE;
   }
 
   $stored = &$controller_data['personal_data'];
-  foreach (RedirectForm::flatten($extra) as $key => &$element) {
-    $defaults = $stored[$key] + array('display' => 'ifnotset', 'keys' => array($key), 'mandatory' => FALSE);
+  $flat = RedirectForm::flatten($extra);
+  foreach ($flat as $key => &$element) {
+    $defaults = isset($stored[$key]) ? $stored[$key] : array();
+    $defaults += array('display' => 'ifnotset', 'keys' => array($key), 'mandatory' => FALSE);
     $form['personal_data'][$key] = array(
       '#type' => 'fieldset',
       '#title' => $element['#title'],
@@ -232,12 +233,14 @@ function configuration_form(array $form, array &$form_state) {
       '#default_value' => $defaults['mandatory'],
       '#access' => !$required,
     );
-    $form['personal_data'][$key]['keys'] = array(
-      '#type' => 'textfield',
-      '#title' => t('Context keys'),
-      '#description' => t('When building the form these (comma separated) keys are used to ask the Payment Context for a (default) value for this field.'),
-      '#default_value' => implode(', ', $defaults['keys']),
-    );
+    if ($element['#type'] != 'fieldset') {
+      $form['personal_data'][$key]['keys'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Context keys'),
+        '#description' => t('When building the form these (comma separated) keys are used to ask the Payment Context for a (default) value for this field.'),
+        '#default_value' => implode(', ', $defaults['keys']),
+      );
+    }
   }
   return $form;
 }
@@ -254,6 +257,7 @@ function configuration_form_validate(array $element, array &$form_state) {
   $data['vendorname'] = $values['vendorname'];
   $data['personal_data'] = $values['personal_data'];
   foreach ($data['personal_data'] as &$field) {
+    $field += array('keys' => '');
     $field['keys'] = array_map('trim', explode(',', $field['keys']));
   }
 }
