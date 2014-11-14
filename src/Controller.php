@@ -84,6 +84,18 @@ class Controller extends \PaymentMethodController {
     } else {
       $payment->setStatus(new \PaymentStatusItem(PAYMENT_STATUS_FAILED));
       entity_save('payment', $payment);
+      $message = t(
+        '::@method:: encountered an error while contacting ' .
+        'the SagePay server. The status code was ::@status:: and the StatusDetail ' .
+        '::@statusdetail:: (pid: @pid, pmid: @pmid)',
+        array(
+          '@status'       => $result['Status'],
+          '@statusdetail' => $result['StatusDetail'],
+          '@pid'          => $payment->pid,
+          '@pmid'         => $payment->method->pmid,
+          '@method'       => $payment->method->title_specific,
+        ));
+      throw new \PaymentException($message);
     }
   }
 
