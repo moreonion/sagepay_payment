@@ -70,19 +70,18 @@ function sagepay_payment_check_signature($vendor_name, $security_key, $data) {
 }
 
 function sagepay_payment_notification_callback() {
+  $vpstxid = check_plain($_POST['VPSTxId']);
+  $info = db_select('sagepay_payment_payments', 's')
+    ->condition('vpstxid', $vpstxid)
+    ->fields('s', array('pid', 'securitykey'))
+    ->execute()
+    ->fetchAssoc();
+  $payment = entity_load('payment', array($info['pid']))[$info['pid']];
+
   switch ($_POST['Status']) {
     case 'OK': // if the transaction was authorised.
     case 'PENDING': // (for European Payment Types only), if the transaction
       // ...has yet to be accepted or rejected.
-      $vpstxid = check_plain($_POST['VPSTxId']);
-      $info = db_select('sagepay_payment_payments', 's')
-        ->condition('vpstxid', $vpstxid)
-        ->fields('s', array('pid', 'securitykey'))
-        ->execute()
-        ->fetchAssoc();
-
-      $payment = entity_load('payment', array($info['pid']))[$info['pid']];
-
       if (sagepay_payment_check_signature(
           $payment->method->controller_data['vendorname'],
           $info['securitykey'],
