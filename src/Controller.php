@@ -62,8 +62,8 @@ class Controller extends \PaymentMethodController {
     $address->postcode = $test_mode ? '412' : $md['address']['postcode'];
     $address->country = $md['address']['country'];
     $address->state = $md['address']['state'];
-    if ($address->country === 'GB') {
-      $address->country = 'UK';
+    if ($address->country === 'UK') {
+      $address->country = 'GB';
     };
 
     $api = \SagepayApiFactory::create('server', $config);
