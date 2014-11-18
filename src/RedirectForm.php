@@ -13,6 +13,10 @@ class RedirectForm extends \Drupal\payment_forms\OnlineBankingForm {
     $all = TRUE;
     foreach ($pd['address'] as $controller_key => &$field) {
       $config = isset($data[$controller_key]) ? $data[$controller_key] + $default : $default;
+      if (!empty($field['#required'])) {
+        $field['#controller_required'] = $field['#required'];
+        unset($field['#required']);
+      }
       if ($context) {
         foreach ($config['keys'] as $key) {
           if ($value = $context->value($key)) {
@@ -26,6 +30,10 @@ class RedirectForm extends \Drupal\payment_forms\OnlineBankingForm {
     $pd['address']['#default_value'] = $all;
 
     foreach ($pd as $controller_key => &$field) {
+      if (!empty($field['#required'])) {
+        $field['#controller_required'] = $field['#required'];
+        unset($field['#required']);
+      }
       $config = isset($data[$controller_key]) ? $data[$controller_key] + $default : $default;
       if ($context) {
         foreach ($config['keys'] as $key) {
@@ -46,8 +54,28 @@ class RedirectForm extends \Drupal\payment_forms\OnlineBankingForm {
     return $element;
   }
 
+  protected function setRequiredError(array &$elements) {
+    if (isset($elements['#title'])) {
+      form_error($elements, t('!name field is required.', array('!name' => $elements['#title'])));
+    }
+    else {
+      form_error($elements);
+    }
+  }
+
   public function validateForm(array &$element, array &$form_state) {
     $values = drupal_array_get_nested_value($form_state['values'], $element['#parents']);
+    $pd = &$element['personal_data'];
+    foreach ($pd['address'] as $controller_key => &$field) {
+      if (!empty($field['#controller_required']) && empty($values['personal_data']['address'][$controller_key])) {
+        $this->setRequiredError($field);
+      }
+    }
+    foreach ($pd as $controller_key => &$field) {
+      if (!empty($field['#controller_required']) && empty($values['personal_data'][$controller_key])) {
+        $this->setRequiredError($field);
+      }
+    }
     $values += $values['personal_data'];
     unset($values['personal_data']);
     $form_state['payment']->method_data += $values;
