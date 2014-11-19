@@ -131,7 +131,7 @@ class RedirectForm extends \Drupal\payment_forms\OnlineBankingForm {
     $element['address']['country'] = array(
       '#type' => 'select',
       '#options' => country_get_list(),
-      '#title' => t('County'),
+      '#title' => t('Country'),
       '#required' => TRUE,
     );
     return $element;
@@ -153,4 +153,3 @@ class RedirectForm extends \Drupal\payment_forms\OnlineBankingForm {
     return $flat;
   }
 }
-
