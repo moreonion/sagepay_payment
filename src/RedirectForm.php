@@ -13,10 +13,6 @@ class RedirectForm extends \Drupal\payment_forms\OnlineBankingForm {
     $all = TRUE;
     foreach ($pd['address'] as $controller_key => &$field) {
       $config = isset($data[$controller_key]) ? $data[$controller_key] + $default : $default;
-      if (!empty($field['#required'])) {
-        $field['#controller_required'] = $field['#required'];
-        unset($field['#required']);
-      }
       if ($context) {
         foreach ($config['keys'] as $key) {
           if ($value = $context->value($key)) {
@@ -25,7 +21,11 @@ class RedirectForm extends \Drupal\payment_forms\OnlineBankingForm {
           }
         }
       }
-      $all = $all && !empty($field['#default_value']);
+      if (!empty($field['#required'])) {
+        $all = $all && !empty($field['#default_value']);
+        $field['#controller_required'] = $field['#required'];
+        unset($field['#required']);
+      }
     }
     $pd['address']['#default_value'] = $all;
 
@@ -42,8 +42,8 @@ class RedirectForm extends \Drupal\payment_forms\OnlineBankingForm {
             break;
           }
         }
-        $field['#access'] = $this->shouldDisplay($field, $config);
       }
+      $field['#access'] = $this->shouldDisplay($field, $config);
     }
 
     $element['personal_data'] = $pd + array(
