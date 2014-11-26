@@ -2,6 +2,8 @@
 
 namespace Drupal\sagepay_payment;
 
+use \Drupal\payment_forms\PaymentContextInterface;
+
 class Controller extends \PaymentMethodController {
   public $controller_data_defaults = array(
     'testmode' => '0',
@@ -80,7 +82,12 @@ class Controller extends \PaymentMethodController {
         'vpstxid' => $result['VPSTxId'],
       );
       drupal_write_record('sagepay_payment_payments', $params);
-      $payment->form_state['redirect'] = $result['NextURL'];
+      if ($context && $context instanceof PaymentContextInterface) {
+        $context->redirect($result['NextURL']);
+      }
+      else {
+        drupal_goto($result['NextURL']);
+      }
     } else {
       $payment->setStatus(new \PaymentStatusItem(PAYMENT_STATUS_FAILED));
 
