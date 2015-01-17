@@ -23,7 +23,6 @@ class Controller extends \PaymentMethodController {
   public function execute(\Payment $payment) {
     libraries_load('sagepay-php');
     $md = $payment->method_data;
-    $context = &$payment->context_data['context'];
     $test_mode = $payment->method->controller_data['testmode'];
     $partner_id = $payment->method->controller_data['partnerid'];
     $vendor_name = $payment->method->controller_data['vendorname'];
@@ -82,12 +81,7 @@ class Controller extends \PaymentMethodController {
         'vpstxid' => $result['VPSTxId'],
       );
       drupal_write_record('sagepay_payment_payments', $params);
-      if ($context && $context instanceof PaymentContextInterface) {
-        $context->redirect($result['NextURL']);
-      }
-      else {
-        drupal_goto($result['NextURL']);
-      }
+      $payment->contextObj->redirect($result['NextURL']);
     } else {
       $payment->setStatus(new \PaymentStatusItem(PAYMENT_STATUS_FAILED));
 
