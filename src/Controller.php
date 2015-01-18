@@ -2,8 +2,6 @@
 
 namespace Drupal\sagepay_payment;
 
-use \Drupal\payment_forms\PaymentContextInterface;
-
 class Controller extends \PaymentMethodController {
   public $controller_data_defaults = array(
     'testmode' => '0',

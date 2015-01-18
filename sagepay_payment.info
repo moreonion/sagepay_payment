@@ -6,5 +6,4 @@ dependencies[] = payment
 dependencies[] = payment_context
 dependencies[] = payment_forms
 dependencies[] = xautoload
-dependencies[] = webform_paymethod_select
 dependencies[] = libraries

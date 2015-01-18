@@ -1,11 +1,10 @@
 <?php
 
 namespace Drupal\sagepay_payment;
-use \Drupal\payment_forms\PaymentContextInterface;
 
 class RedirectForm extends \Drupal\payment_forms\OnlineBankingForm {
-  public function getForm(array &$element, array &$form_state, PaymentContextInterface $context) {
-    $payment = $form_state['payment'];
+  public function getForm(array &$element, array &$form_state, \Payment $payment) {
+    $context = $payment->contextObj;
     $data = $payment->method->controller_data['personal_data'];
     $default = array('keys' => array());
 
@@ -49,7 +48,7 @@ class RedirectForm extends \Drupal\payment_forms\OnlineBankingForm {
     $element['personal_data'] = $pd + array(
       '#type' => 'container',
     );
-    $element += parent::getForm($element, $form_state, $context);
+    $element += parent::getForm($element, $form_state, $payment);
     $element['redirection_info']['#weight'] = 100;
     return $element;
   }
@@ -63,7 +62,7 @@ class RedirectForm extends \Drupal\payment_forms\OnlineBankingForm {
     }
   }
 
-  public function validateForm(array &$element, array &$form_state) {
+  public function validateForm(array &$element, array &$form_state, \Payment $payment) {
     $values = drupal_array_get_nested_value($form_state['values'], $element['#parents']);
     $pd = &$element['personal_data'];
     foreach ($pd['address'] as $controller_key => &$field) {
@@ -78,7 +77,7 @@ class RedirectForm extends \Drupal\payment_forms\OnlineBankingForm {
     }
     $values += $values['personal_data'];
     unset($values['personal_data']);
-    $form_state['payment']->method_data += $values;
+    $payment->method_data += $values;
   }
 
   protected function shouldDisplay(&$field, &$config) {
