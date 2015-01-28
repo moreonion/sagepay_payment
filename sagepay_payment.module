@@ -101,6 +101,7 @@ function sagepay_payment_notification_callback() {
       // infrequent, but your site should handle them anyway. They normally
       // indicate a problem with bank connectivity.
     default:
+      watchdog('sagepay_payment', 'Sagepay-error: @status -> @detail', array('@status' => $_POST['Status'],  '@detail' => $_POST['StatusDetail']), WATCHDOG_ERROR);
       $payment->setStatus(new \PaymentStatusItem(PAYMENT_STATUS_FAILED));
       $status = 'ERROR';
       break;
