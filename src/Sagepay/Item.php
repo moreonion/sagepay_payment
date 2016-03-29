@@ -610,7 +610,7 @@ class Item
             }
             else if (is_float($value))
             {
-                $node = $basket->createElement($name, number_format($value, 2));
+                $node = $basket->createElement($name, number_format($value, 2, '.', ''));
             }
             if ($node !== null)
             {
