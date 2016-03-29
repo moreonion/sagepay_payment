@@ -603,16 +603,16 @@ class Basket
             }
 
             $node = $this->_createDomNode($dom, $value, $name);
-            if ($node instanceof DOMNode)
+            if ($node instanceof \DOMNode)
             {
                 $dom->documentElement->appendChild($node);
             }
-            else if ($node instanceof DOMNodeList)
+            else if ($node instanceof \DOMNodeList)
             {
                 for ($i = 0, $n = $node->length; $i < $n; $i++)
                 {
                     $child = $node->item(0);
-                    if ($child instanceof DOMNode)
+                    if ($child instanceof \DOMNode)
                     {
                         $dom->documentElement->appendChild($child);
                     }
@@ -623,12 +623,12 @@ class Basket
     }
 
     /**
-     * Create a DOMNode from property
+     * Create a \DOMNode from property
      *
      * @param \DOMDocument $dom
      * @param string $name
      * @param mixed $value
-     * @return DOMNode|DOMNodeList
+     * @return \DOMNode|\DOMNodeList
      */
     private function _createDomNode($dom, $value, $name = null)
     {

@@ -587,7 +587,7 @@ class Item
      *
      * @param \DOMDocument $basket
      *
-     * @return DOMNode
+     * @return \DOMNode
      */
     public function asDomElement(\DOMDocument $basket)
     {
