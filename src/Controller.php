@@ -25,7 +25,7 @@ class Controller extends \PaymentMethodController {
     $partner_id = $payment->method->controller_data['partnerid'];
     $vendor_name = $payment->method->controller_data['vendorname'];
 
-    $config = \SagepaySettings::getInstance(
+    $config = Sagepay\Settings::getInstance(
       array(
         'env' => $test_mode ? 'test': 'live',
         'currency' => $payment->currency_code,
@@ -42,16 +42,16 @@ class Controller extends \PaymentMethodController {
       false
     );
 
-    $basket = new \SagepayBasket();
+    $basket = new Sagepay\Basket();
     $basket->setDescription($payment->description);
 
-    $item = new \SagepayItem();
+    $item = new Sagepay\Item();
     $item->setDescription($payment->description);
     $item->setUnitNetAmount($payment->totalAmount(TRUE));
     $item->setQuantity(1);
     $basket->addItem($item);
 
-    $address = new \SagepayCustomerDetails();
+    $address = new Sagepay\CustomerDetails();
     $address->firstname = $md['firstname'];
     $address->lastname = $md['lastname'];
     $address->email = $md['email'];
@@ -65,7 +65,7 @@ class Controller extends \PaymentMethodController {
       $address->country = 'GB';
     };
 
-    $api = \SagepayApiFactory::create('server', $config);
+    $api = new Sagepay\ServerApi($config);
     $api->setBasket($basket);
     $api->addAddress($address);
     $api->addAddress($address);

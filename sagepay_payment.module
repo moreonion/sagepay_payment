@@ -34,24 +34,6 @@ function sagepay_payment_menu() {
   return $items;
 }
 
-/**
-* Implements hook_libraries_info().
-*
-* for stripes php wrapper library.
-*/
-function sagepay_payment_libraries_info() {
-  $libraries['sagepay-php'] = array(
-    'name' => 'Sagepay',
-    'vendor url' => 'https://sagepay.com//',
-    'download url' => 'http://www.sagepay.co.uk/file/9981/download-document/VspPHPKit.zip',
-    'version' => '3.0.0',
-    'files' => array(
-      'php' => array('sagepay.php')
-    )
-  );
-  return $libraries;
-}
-
 function sagepay_payment_check_signature($vendor_name, $security_key, $data) {
   $data['VendorName'] = $vendor_name;
   $data['SecurityKey'] = $security_key;
