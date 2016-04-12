@@ -5,5 +5,4 @@ core = 7.x
 dependencies[] = payment
 dependencies[] = payment_context
 dependencies[] = payment_forms
-dependencies[] = xautoload
-dependencies[] = libraries
+dependencies[] = psr0
