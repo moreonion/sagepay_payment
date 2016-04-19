@@ -19,7 +19,6 @@ class Controller extends \PaymentMethodController {
   }
 
   public function execute(\Payment $payment) {
-    libraries_load('sagepay-php');
     $md = $payment->method_data;
     $test_mode = $payment->method->controller_data['testmode'];
     $partner_id = $payment->method->controller_data['partnerid'];
@@ -165,11 +164,6 @@ class Controller extends \PaymentMethodController {
 function configuration_form(array $form, array &$form_state) {
   $method = $form_state['payment_method'];
   $controller_data = $method->controller_data + $method->controller->controller_data_defaults;
-
-  $library = libraries_detect('sagepay-php');
-  if (empty($library['installed'])) {
-    drupal_set_message($library['error message'], 'error', FALSE);
-  }
 
   $form['#tree'] = TRUE;
   $form['testmode'] = array(
