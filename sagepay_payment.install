@@ -12,32 +12,6 @@
  * stores serialized PaymentMethodController objects.
  */
 function sagepay_payment_schema() {
-  $schema['sagepay_payment_payment_method_controller'] = array(
-    'fields' => array(
-      'pmid' => array(
-        'type'     => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default'  => 0,
-      ),
-      'testmode' => array(
-        'type'     => 'int',
-        'not null' => TRUE,
-        'default'  => 0,
-      ),
-      'vendorname' => array(
-        'type'     => 'text',
-        'not null' => TRUE,
-      ),
-      'partnerid' => array(
-        'type'     => 'text',
-      ),
-      'personal_data' => array(
-        'type' => 'text',
-      ),
-    ),
-    'primary key' => array('pmid'),
-  );
   $schema['sagepay_payment_payments'] = array(
     'fields' => array(
       'pid' => array(
@@ -68,4 +42,25 @@ function sagepay_payment_schema() {
     'primary key' => array('pid'),
   );
   return $schema;
+}
+
+/**
+ * Enable payment_controller_data and migrate configurations.
+ */
+function sagepay_payment_update_7001() {
+  if (!module_enable(['payment_controller_data'])) {
+    throw new DrupalUpdateException('Could not enable payment_controller_data.');
+  }
+
+  $result = db_select('sagepay_payment_payment_method_controller', 'd')
+    ->fields('d')
+    ->execute();
+  foreach ($result as $row) {
+    $row->personal_data = unserialize($row->personal_data);
+    $method = entity_load_single('payment_method', $row->pmid);
+    $method->controller_data = (array) $row;
+    unset($method->controller_data['pmid']);
+    entity_save('payment_method', $method);
+  }
+  db_drop_table('sagepay_payment_payment_method_controller');
 }

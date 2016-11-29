@@ -95,36 +95,3 @@ function sagepay_payment_notification_callback() {
 function sagepay_payment_finish_callback($payment) {
   $payment->finish();
 }
-
-/**
- * Implements hook_entity_load().
- */
-function sagepay_payment_entity_load(array $entities, $entity_type) {
-  if ($entity_type == 'payment_method') {
-    \Drupal\sagepay_payment\Controller::load($entities);
-  }
-}
-
-/**
- * Implements hook_ENTITY_TYPE_ACTION().
- */
-function sagepay_payment_payment_method_insert(PaymentMethod $method) {
-  if ($method->controller instanceof \Drupal\sagepay_payment\Controller)
-    $method->controller->insert($method);
-}
-
-/**
- * Implements hook_ENTITY_TYPE_ACTION().
- */
-function sagepay_payment_payment_method_update(PaymentMethod $method) {
-  if ($method->controller instanceof \Drupal\sagepay_payment\Controller)
-    $method->controller->update($method);
-}
-
-/**
- * Implements hook_ENTITY_TYPE_ACTION().
- */
-function sagepay_payment_payment_method_delete($method) {
-  if ($method->controller instanceof \Drupal\sagepay_payment\Controller)
-    $method->controller->delete($method);
-}
