@@ -29,6 +29,9 @@ class RedirectForm extends \Drupal\payment_forms\OnlineBankingForm {
     $pd['address']['#default_value'] = $all;
 
     foreach ($pd as $controller_key => &$field) {
+      if ($field['#type'] == 'fieldset') {
+        continue;
+      }
       if (!empty($field['#required'])) {
         $field['#controller_required'] = $field['#required'];
         unset($field['#required']);
