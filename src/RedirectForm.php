@@ -9,8 +9,9 @@ class RedirectForm extends \Drupal\payment_forms\OnlineBankingForm {
     $default = array('keys' => array());
 
     $pd = static::extraElements();
-    $all = TRUE;
-    foreach ($pd['address'] as $controller_key => &$field) {
+    $display_fieldset = FALSE;
+    foreach (element_children($pd['address']) as $controller_key) {
+      $field = &$pd['address'][$controller_key];
       $config = isset($data[$controller_key]) ? $data[$controller_key] + $default : $default;
       if ($context) {
         foreach ($config['keys'] as $key) {
@@ -21,12 +22,16 @@ class RedirectForm extends \Drupal\payment_forms\OnlineBankingForm {
         }
       }
       if (!empty($field['#required'])) {
-        $all = $all && !empty($field['#default_value']);
         $field['#controller_required'] = $field['#required'];
         unset($field['#required']);
       }
+      $field['#access'] = $this->shouldDisplay($field, $config);
+      if ($field['#access']) {
+        $display_fieldset = TRUE;
+      }
     }
-    $pd['address']['#default_value'] = $all;
+    $pd['address']['#default_value'] = !$display_fieldset;
+    $pd['address']['#access'] = $this->shouldDisplay($pd['address'], $data['address']);
 
     foreach ($pd as $controller_key => &$field) {
       if ($field['#type'] == 'fieldset') {
@@ -110,6 +115,7 @@ class RedirectForm extends \Drupal\payment_forms\OnlineBankingForm {
     $element['address'] = array(
       '#title' => t('Address'),
       '#type' => 'fieldset',
+      '#required' => TRUE,
     );
     $element['address']['address1'] = array(
       '#type' => 'textfield',
@@ -139,7 +145,7 @@ class RedirectForm extends \Drupal\payment_forms\OnlineBankingForm {
     return $element;
   }
 
-  public static function flatten(&$elements) {
+  public static function flatten($elements) {
     $fieldsets = array($elements);
     $flat = array();
     while ($fs = array_shift($fieldsets)) {
