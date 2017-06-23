@@ -3,59 +3,83 @@
 namespace Drupal\sagepay_payment;
 
 class RedirectForm extends \Drupal\payment_forms\OnlineBankingForm {
+
+  /**
+   * Helper method to apply a function recursively to all elements.
+   */
+  protected function doRec(&$element, $func) {
+    foreach (element_children($element) as $key) {
+      $this->doRec($element[$key], $func);
+      $func($element[$key], $key);
+    }
+  }
+
   public function form(array $element, array &$form_state, \Payment $payment) {
     $context = $payment->contextObj;
     $data = $payment->method->controller_data['personal_data'];
-    $default = array('keys' => array());
 
-    $pd = static::extraElements();
-    $display_fieldset = FALSE;
-    foreach (element_children($pd['address']) as $controller_key) {
-      $field = &$pd['address'][$controller_key];
-      $config = isset($data[$controller_key]) ? $data[$controller_key] + $default : $default;
-      if ($context) {
-        foreach ($config['keys'] as $key) {
-          if ($value = $context->value($key)) {
-            $field['#default_value'] = $value;
+    $pd = static::extraElements() + ['#type' => 'container'];
+
+   // Add defaults for all elements.
+    $this->doRec($pd, function(&$e, $key) use (&$data) {
+      if ($e['#type'] != 'fieldset') {
+        $data += [$key => []];
+        $data[$key] += [
+          'keys' => [],
+          'mandatory' => FALSE,
+          'display' => 'ifnotset',
+          'display_other' => 'always',
+        ];
+      }
+    });
+
+    // Set default values from context and remove #required.
+    if ($context) {
+      $this->doRec($pd, function(&$e, $key) use ($context, $data) {
+        if ($e['#type'] != 'fieldset') {
+          foreach ($data[$key]['keys'] as $k) {
+            if ($value = $context->value($k)) {
+              $e['#default_value'] = $value;
+              break;
+            }
+          }
+        }
+        $e['#controller_required'] = !empty($e['#required']);
+        unset($e['#required']);
+      });
+    }
+
+    $display = function ($e, $display) {
+      return ($display == 'always') || (empty($e['#default_value']) && $display == 'ifnotset');
+    };
+
+    // Set visibility.
+    $this->doRec($pd, function(&$e, $key) use ($data, $display) {
+      if ($e['#type'] == 'fieldset') {
+        $access = FALSE;
+        foreach (element_children($e) as $k) {
+          if ($e[$k]['#access']) {
+            $access = TRUE;
             break;
           }
         }
-      }
-      if (!empty($field['#required'])) {
-        $field['#controller_required'] = $field['#required'];
-        unset($field['#required']);
-      }
-      $field['#access'] = $this->shouldDisplay($field, $config);
-      if ($field['#access']) {
-        $display_fieldset = TRUE;
-      }
-    }
-    $pd['address']['#default_value'] = !$display_fieldset;
-    $pd['address']['#access'] = $this->shouldDisplay($pd['address'], $data['address']);
-
-    foreach ($pd as $controller_key => &$field) {
-      if ($field['#type'] == 'fieldset') {
-        continue;
-      }
-      if (!empty($field['#required'])) {
-        $field['#controller_required'] = $field['#required'];
-        unset($field['#required']);
-      }
-      $config = isset($data[$controller_key]) ? $data[$controller_key] + $default : $default;
-      if ($context) {
-        foreach ($config['keys'] as $key) {
-          if ($value = $context->value($key)) {
-            $field['#default_value'] = $value;
-            break;
+        $e['#access'] = $access;
+        if ($access) {
+          // Give child elements a chance to be displayed if other childs are.
+          foreach (element_children($e) as $k) {
+            $c = &$e[$k];
+            if ($c['#type'] != 'fieldset' && !$c['#access']) {
+              $c['#access'] = $display($c, $data[$k]['display_other']);
+            }
           }
         }
       }
-      $field['#access'] = $this->shouldDisplay($field, $config);
-    }
+      else {
+        $e['#access'] = $display($e, $data[$key]['display']);
+      }
+    });
 
-    $element['personal_data'] = $pd + array(
-      '#type' => 'container',
-    );
+    $element['personal_data'] = $pd;
     $element += parent::form($element, $form_state, $payment);
     $element['redirection_info']['#weight'] = 100;
     return $element;
@@ -86,10 +110,6 @@ class RedirectForm extends \Drupal\payment_forms\OnlineBankingForm {
     $values += $values['personal_data'];
     unset($values['personal_data']);
     $payment->method_data += $values;
-  }
-
-  protected function shouldDisplay(&$field, &$config) {
-    return ($config['display'] == 'always') || (empty($field['#default_value']) && $config['display'] == 'ifnotset');
   }
 
   public static function extraElements() {
