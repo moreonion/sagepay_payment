@@ -64,4 +64,26 @@ class RedirectFormTest extends \DrupalUnitTestCase {
     $this->assertTrue($pd['address']['#access']);
   }
 
+  /**
+   * Test that address fields are shown if country is missing.
+   */
+  public function testFormCountryMissingAddressVisible() {
+    $form = new RedirectForm();
+    $form_state = [];
+    $payment = $this->mockPayment([
+      'firstname' => 'First',
+      'lastname' => 'Last',
+      'address1' => 'Address1',
+      'postcode' => 'TEST',
+      'city' => 'London',
+    ]);
+    $element = $form->form([], $form_state, $payment);
+    $pd = $element['personal_data'];
+    $pd['address'] += ['#access' => TRUE];
+    $this->assertTrue($pd['address']['#access']);
+    $this->assertTrue($pd['address']['city']['#access']);
+    $this->assertEquals('London', $pd['address']['city']['#default_value']);
+  }
+
+
 }

@@ -4,6 +4,17 @@ namespace Drupal\sagepay_payment;
 
 class ControllerForm implements \Drupal\payment_forms\MethodFormInterface {
 
+  protected function displayOptions($required) {
+    $display_options = [
+      'ifnotset' => t('Show field if it is not available from the context.'),
+      'always' => t('Always show the field - prefill with context values.'),
+    ];
+    if (!$required) {
+      $display_options['hidden'] = t("Don't display, use values from context if available.");
+    }
+    return $display_options;
+  }
+
   /**
    * Add form elements to the $element Form-API array.
    */
@@ -37,15 +48,7 @@ class ControllerForm implements \Drupal\payment_forms\MethodFormInterface {
       '#description' => t('Configure how personal data can be mapped from the payment context.'),
     );
 
-    $display_options = array(
-      'ifnotset' => t('Show field if it is not available from the context.'),
-      'always' => t('Always show the field - prefill with context values.'),
-    );
-    $non_mandatory = array(
-      'hidden' => t("Don't display, use values from context if available."),
-    );
     $extra = RedirectForm::extraElements();
-
     foreach ($extra as $key => &$element) {
       $element['#top_level'] = TRUE;
     }
@@ -53,8 +56,16 @@ class ControllerForm implements \Drupal\payment_forms\MethodFormInterface {
     $stored = &$controller_data['personal_data'];
     $flat = RedirectForm::flatten($extra);
     foreach ($flat as $key => &$element) {
+      if ($element['#type'] == 'fieldset') {
+        continue;
+      }
       $defaults = isset($stored[$key]) ? $stored[$key] : array();
-      $defaults += array('display' => 'ifnotset', 'keys' => array($key), 'mandatory' => FALSE);
+      $defaults += [
+        'display' => 'ifnotset',
+        'keys' => array($key),
+        'mandatory' => FALSE,
+        'display_other' => 'always',
+      ];
       $form['personal_data'][$key] = array(
         '#type' => 'fieldset',
         '#title' => $element['#title'],
@@ -62,14 +73,21 @@ class ControllerForm implements \Drupal\payment_forms\MethodFormInterface {
       $required = !empty($element['#required']);
       $defaults['mandatory'] = $defaults['mandatory'] || $required;
       $id = drupal_html_id('controller_data_' . $key);
-      if (!empty($element['#top_level'])) {
-        $form['personal_data'][$key]['display'] = array(
+      $form['personal_data'][$key]['display'] = array(
+        '#type' => 'select',
+        '#title' => t('Display'),
+        '#options' => $this->displayOptions($required),
+        '#default_value' => $defaults['display'],
+        '#id' => $id,
+      );
+      if (empty($element['#top_level'])) {
+        $form['personal_data'][$key]['display_other'] = [
           '#type' => 'select',
-          '#title' => t('Display'),
-          '#options' => ($required ? array() : $non_mandatory) + $display_options,
-          '#default_value' => $defaults['display'],
-          '#id' => $id,
-        );
+          '#title' => t('Display when other fields in the same fieldset are visible.'),
+          '#options' => $this->displayOptions($required),
+          '#default_value' => $defaults['display_other'],
+          '#states' => ['invisible' => ["#$id" => ['value' => 'always']]],
+        ];
       }
       $form['personal_data'][$key]['mandatory'] = array(
         '#type' => 'checkbox',
@@ -82,14 +100,12 @@ class ControllerForm implements \Drupal\payment_forms\MethodFormInterface {
         '#default_value' => $defaults['mandatory'],
         '#access' => !$required,
       );
-      if ($element['#type'] != 'fieldset') {
-        $form['personal_data'][$key]['keys'] = array(
-          '#type' => 'textfield',
-          '#title' => t('Context keys'),
-          '#description' => t('When building the form these (comma separated) keys are used to ask the Payment Context for a (default) value for this field.'),
-          '#default_value' => implode(', ', $defaults['keys']),
-        );
-      }
+      $form['personal_data'][$key]['keys'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Context keys'),
+        '#description' => t('When building the form these (comma separated) keys are used to ask the Payment Context for a (default) value for this field.'),
+        '#default_value' => implode(', ', $defaults['keys']),
+      );
     }
     return $form;
   }
