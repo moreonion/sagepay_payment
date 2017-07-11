@@ -37,6 +37,31 @@ class Controller extends \PaymentMethodController {
     return new ControllerForm();
   }
 
+  /**
+   * Create a sagepay basket based on a payment.
+   *
+   * @param \Payment $payment
+   *   The payment to create the basket for.
+   *
+   * @return \Drupal\sagepay_payment\Sagepay\Basket
+   *   The fully configured basket object.
+   */
+  public function createBasket(\Payment $payment) {
+    $basket = new Basket();
+    $basket->setDescription($payment->description);
+
+    foreach ($payment->line_items as $pitem) {
+      $net_amount = $pitem->unitAmount(FALSE);
+      $item = new Item();
+      $item->setDescription($pitem->description);
+      $item->setUnitNetAmount($net_amount);
+      $item->setUnitTaxAmount($pitem->unitAmount(TRUE) - $net_amount);
+      $item->setQuantity($pitem->quantity);
+      $basket->addItem($item);
+    }
+    return $basket;
+  }
+
   public function execute(\Payment $payment) {
     $md = $payment->method_data;
     $test_mode = $payment->method->controller_data['testmode'];
@@ -60,15 +85,6 @@ class Controller extends \PaymentMethodController {
       FALSE
     );
 
-    $basket = new Basket();
-    $basket->setDescription($payment->description);
-
-    $item = new Item();
-    $item->setDescription($payment->description);
-    $item->setUnitNetAmount($payment->totalAmount(TRUE));
-    $item->setQuantity(1);
-    $basket->addItem($item);
-
     $address = new CustomerDetails();
     $address->firstname = $md['firstname'];
     $address->lastname = $md['lastname'];
@@ -84,7 +100,7 @@ class Controller extends \PaymentMethodController {
     };
 
     $api = new ServerApi($config);
-    $api->setBasket($basket);
+    $api->setBasket($this->createBasket($payment));
     $api->addAddress($address);
     $api->addAddress($address);
     $result = $api->createRequest();
