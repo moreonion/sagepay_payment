@@ -2,7 +2,19 @@
 
 namespace Drupal\sagepay_payment;
 
+use Drupal\sagepay_payment\Sagepay\Basket;
+use Drupal\sagepay_payment\Sagepay\CustomerDetails;
+use Drupal\sagepay_payment\Sagepay\Item;
+use Drupal\sagepay_payment\Sagepay\ServerApi;
+use Drupal\sagepay_payment\Sagepay\Settings;
+
+/**
+ * Payment controller for the SagePay server integration.
+ *
+ * @link https://www.sagepay.co.uk/support/find-an-integration-document/server-integration-documents SagePay documentation @endlink
+ */
 class Controller extends \PaymentMethodController {
+
   public $controller_data_defaults = array(
     'testmode' => '0',
     'partnerid' => '',
@@ -31,9 +43,9 @@ class Controller extends \PaymentMethodController {
     $partner_id = $payment->method->controller_data['partnerid'];
     $vendor_name = $payment->method->controller_data['vendorname'];
 
-    $config = Sagepay\Settings::getInstance(
+    $config = Settings::getInstance(
       array(
-        'env' => $test_mode ? 'test': 'live',
+        'env' => $test_mode ? 'test' : 'live',
         'currency' => $payment->currency_code,
         'vendorName' => $vendor_name,
         'partnerId' => isset($partner_id) ? $partner_id : '',
@@ -45,19 +57,19 @@ class Controller extends \PaymentMethodController {
         'customerPasswordSalt' => drupal_get_hash_salt(),
         'website' => $GLOBALS['base_url'],
       ),
-      false
+      FALSE
     );
 
-    $basket = new Sagepay\Basket();
+    $basket = new Basket();
     $basket->setDescription($payment->description);
 
-    $item = new Sagepay\Item();
+    $item = new Item();
     $item->setDescription($payment->description);
     $item->setUnitNetAmount($payment->totalAmount(TRUE));
     $item->setQuantity(1);
     $basket->addItem($item);
 
-    $address = new Sagepay\CustomerDetails();
+    $address = new CustomerDetails();
     $address->firstname = $md['firstname'];
     $address->lastname = $md['lastname'];
     $address->email = $md['email'];
@@ -71,7 +83,7 @@ class Controller extends \PaymentMethodController {
       $address->country = 'GB';
     };
 
-    $api = new Sagepay\ServerApi($config);
+    $api = new ServerApi($config);
     $api->setBasket($basket);
     $api->addAddress($address);
     $api->addAddress($address);
@@ -86,7 +98,8 @@ class Controller extends \PaymentMethodController {
       );
       drupal_write_record('sagepay_payment_payments', $params);
       $payment->contextObj->redirect($result['NextURL']);
-    } else {
+    }
+    else {
       $payment->setStatus(new \PaymentStatusItem(PAYMENT_STATUS_FAILED));
 
       $message = '::@method:: encountered an error while contacting ' .
