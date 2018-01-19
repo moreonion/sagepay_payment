@@ -1,5 +1,7 @@
 <?php
 
+use Drupal\sagepay_payment\NotificationStatus;
+
 /**
  * Implements hook_payment_method_controller_info().
  */
@@ -20,10 +22,11 @@ function sagepay_payment_menu() {
     'page callback' => 'sagepay_payment_notification_callback',
     'access callback' => TRUE,
     'type' => MENU_CALLBACK,
+    'delivery callback' => 'sagepay_payment_deliver_notification',
   );
 
   $items['sagepay_payment/finish/%entity_object/%'] = array(
-    'title' => 'Notification',
+    'title' => 'Return from SagePay’s payment pages',
     'page callback' => 'sagepay_payment_finish_callback',
     'load arguments' => array('payment'),
     'page arguments' => array(2),
@@ -53,46 +56,66 @@ function sagepay_payment_check_signature($vendor_name, $security_key, $data) {
 }
 
 function sagepay_payment_notification_callback() {
+  if (!isset($_POST['VPSTxId']) || !isset($_POST['Status'])) {
+    watchdog('sagepay_payment', 'Invalid request to the notification callback.', [], WATCHDOG_ERROR);
+    return NotificationStatus::invalid('Invalid request.');
+  }
   $vpstxid = check_plain($_POST['VPSTxId']);
   $info = db_select('sagepay_payment_payments', 's')
     ->condition('vpstxid', $vpstxid)
     ->fields('s', array('pid', 'securitykey'))
     ->execute()
     ->fetchAssoc();
-  $payment = entity_load('payment', array($info['pid']))[$info['pid']];
+  if (!$info) {
+    watchdog('sagepay_payment', 'Received notification with unknown VPSTxId.', [], WATCHDOG_ERROR);
+    return NotificationStatus::invalid('Unknown VPSTxId.');
+  }
+  $payment = entity_load_single('payment', $info['pid']);
+  if (!$payment) {
+    watchdog('sagepay_payment', 'Could not load payment for VPSTxId.', [], WATCHDOG_ERROR);
+    return NotificationStatus::error('Payment data not found.');
+  }
+  $vendor = $payment->method->controller_data['vendorname'];
+  if (!sagepay_payment_check_signature($vendor, $info['securitykey'], $_POST)) {
+    watchdog('sagepay_payment', 'Invalid signature.', [], WATCHDOG_ERROR);
+    return NotificationStatus::invalid('Invalid signature.');
+  }
 
   switch ($_POST['Status']) {
-    case 'OK': // if the transaction was authorised.
-    case 'PENDING': // (for European Payment Types only), if the transaction
-      // ...has yet to be accepted or rejected.
-      if (sagepay_payment_check_signature(
-          $payment->method->controller_data['vendorname'],
-          $info['securitykey'],
-          $_POST)) {
-        $payment->setStatus(new \PaymentStatusItem(PAYMENT_STATUS_SUCCESS));
-        $status = 'OK';
-      } else {
-        $payment->setStatus(new \PaymentStatusItem(PAYMENT_STATUS_FAILED));
-        $status = 'ERROR';
-      }
-      break;
-    case 'NOTAUTHED': // if the authorisation was failed by the bank.
-    case 'REJECTED': // if your fraud screening rules were not met.
-    case 'ABORT': // if the user decided to cancel the transaction whilst
-      // ...on our payment pages.
-    case 'ERROR': // if an error has occurred at Sage Pay. These are very
-      // infrequent, but your site should handle them anyway. They normally
-      // indicate a problem with bank connectivity.
+    case 'OK':
+      // The transaction was authorised.
+    case 'PENDING':
+      // The transaction has yet to be accepted or rejected.
+      // (European Payment Types only)
+      $payment->setStatus(new \PaymentStatusItem(PAYMENT_STATUS_SUCCESS));
+      entity_save('payment', $payment);
+      return NotificationStatus::ok($payment, 'Success');
+
+    case 'NOTAUTHED':
+      // The authorisation was failed by the bank.
+    case 'REJECTED':
+      // Fraud screening rules were not met.
+    case 'ABORT':
+      // The user decided to cancel the transaction whilst on the payment pages.
+    case 'ERROR':
+      // An error occurred on the SagePay side.
     default:
       watchdog('sagepay_payment', 'Sagepay-error: @status -> @detail', array('@status' => $_POST['Status'],  '@detail' => $_POST['StatusDetail']), WATCHDOG_ERROR);
       $payment->setStatus(new \PaymentStatusItem(PAYMENT_STATUS_FAILED));
-      $status = 'ERROR';
-      break;
+      entity_save('payment', $payment);
+      return NotificationStatus::ok($payment, 'Failed');
   }
-  entity_save('payment', $payment);
-  $hash = sagepay_payment_signature($payment->pid);
-  $url = url("sagepay_payment/finish/{$payment->pid}/$hash", ['absolute' => TRUE]);
-  echo "Status=$status\r\nRedirectURL=$url";
+}
+
+/**
+ * Delivery callback for notification requests.
+ */
+function sagepay_payment_deliver_notification($response) {
+  if (!($response instanceof NotificationStatus)) {
+    $response = NotificationStatus::error($response);
+  }
+  echo $response->response();
+  drupal_page_footer();
 }
 
 /**
