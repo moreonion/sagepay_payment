@@ -1,0 +1,13 @@
+<?php
+
+/**
+ * @file
+ * Hook implementations and callbacks for the sagepay_payment_test module.
+ */
+
+/**
+ * Stub payment finish callback for testing.
+ */
+function sagepay_payment_test_finish($payment) {
+  drupal_goto("sagepay_payment/test-finish/{$payment->pid}");
+}

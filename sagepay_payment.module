@@ -22,12 +22,13 @@ function sagepay_payment_menu() {
     'type' => MENU_CALLBACK,
   );
 
-  $items['sagepay_payment/finish/%entity_object'] = array(
+  $items['sagepay_payment/finish/%entity_object/%'] = array(
     'title' => 'Notification',
     'page callback' => 'sagepay_payment_finish_callback',
     'load arguments' => array('payment'),
     'page arguments' => array(2),
-    'access callback' => TRUE,
+    'access callback' => 'sagepay_payment_check_hash',
+    'access arguments' => [2, 3],
     'type' => MENU_CALLBACK,
   );
 
@@ -89,9 +90,48 @@ function sagepay_payment_notification_callback() {
       break;
   }
   entity_save('payment', $payment);
-  echo 'Status=' . $status . PHP_EOL . 'RedirectURL=' . $GLOBALS['base_url'] . '/sagepay_payment/finish/' . $payment->pid;
+  $hash = sagepay_payment_signature($payment->pid);
+  $url = url("sagepay_payment/finish/{$payment->pid}/$hash", ['absolute' => TRUE]);
+  echo "Status=$status\r\nRedirectURL=$url";
 }
 
+/**
+ * Generate the HMAC signature for a payment.
+ *
+ * @param int $pid
+ *   The payment ID.
+ *
+ * @return string
+ *   A base64 encoded HMAC signature unique for this payment ID.
+ */
+function sagepay_payment_signature($pid) {
+  $data = "sagepay_payment.$pid";
+  $key = drupal_get_private_key() . drupal_get_hash_salt();
+  return drupal_hmac_base64($data, $key);
+}
+
+/**
+ * Access callback: Check the payment signature.
+ *
+ * @param \Payment $payment
+ *   The payment for which the user should be authorized.
+ * @param string $hash
+ *   The hash to check.
+ *
+ * @see sagepay_payment_menu()
+ */
+function sagepay_payment_check_hash($payment, $hash) {
+  return $payment->pid && $hash == sagepay_payment_signature($payment->pid);
+}
+
+/**
+ * Page callback: Return from Sagepay’s payment pages.
+ *
+ * @param \Payment $payment
+ *   The payment for which the user is being redirected.
+ *
+ * @see sagepay_payment_menu()
+ */
 function sagepay_payment_finish_callback($payment) {
   $payment->finish();
 }

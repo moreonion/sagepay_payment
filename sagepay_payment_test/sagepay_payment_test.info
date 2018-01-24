@@ -1,0 +1,6 @@
+name = Sagepay payment test
+description = Dependencies and data for the automated tests.
+core = 7.x
+hidden = TRUE
+dependencies[] = campaignion
+dependencies[] = sagepay_payment
