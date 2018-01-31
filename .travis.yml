@@ -29,11 +29,13 @@ before_script:
   - cd test-root
   - root=`pwd`
   - drush dl entity campaignion payment payment_context payment_controller_data payment_forms psr0
-  - drush --yes pm-enable campaignion sagepay_payment
+  - drush --yes pm-enable sagepay_payment_test
+  - drush runserver 127.0.0.1:8080 &
+  - until netstat -an 2>/dev/null | grep '8080.*LISTEN'; do sleep 0.1s; done
 
 script:
   - cd $repo
-  - UPAL_ROOT=$root UPAL_DB_URL=mysql://root:@127.0.0.1/drupal UPAL_WEB_URL=http://127.0.0.1 phpunit -c phpunit.xml.dist --bootstrap $upal/bootstrap.php --coverage-clover=coverage.xml .
+  - UPAL_ROOT=$root UPAL_DB_URL=mysql://root:@127.0.0.1/drupal UPAL_WEB_URL=http://127.0.0.1:8080 phpunit -c phpunit.xml.dist --bootstrap $upal/bootstrap.php --coverage-clover=coverage.xml .
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
