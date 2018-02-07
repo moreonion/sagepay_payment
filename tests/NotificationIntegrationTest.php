@@ -92,4 +92,16 @@ class NotificationIntegrationTest extends \DrupalWebTestCase {
     $this->assertEqual(302, $resp->code);
   }
 
+  /**
+   * Test a simple (invalid) GET request to the notifcation callback.
+   */
+  public function testInvalidNotificationRequest() {
+    $absolute = ['absolute' => TRUE];
+    $url = url('/sagepay_payment/notify', $absolute);
+    $resp = drupal_http_request($url);
+    $this->assertEqual(200, $resp->code);
+    $data = $this->parseResponse($resp->data);
+    $this->assertEqual('INVALID', $data['Status']);
+  }
+
 }
