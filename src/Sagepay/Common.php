@@ -230,28 +230,6 @@ class Common
         
         switch ($integrationMethod)
         {
-            case SAGEPAY_FORM:
-                // Unset unused values
-                unset($query['VPSProtocol']);
-                unset($query['Vendor']);
-                unset($query['TxType']);
-
-                $env = $settings->getEnv();
-                
-                $query['SuccessURL'] = $settings->getFullFormSuccessUrl();
-                $query['FailureURL'] = $settings->getFullFormFailureUrl();
-                
-                $request->setData($query);
-                $queryStr = Util::arrayToQueryString($query);
-
-                $formValues = array();
-                $formValues['Vendor'] = $settings->getVendorName();
-                $formValues['VPSProtocol'] = $settings->getProtocolVersion();
-                $formValues['TxType'] = $txType;
-                $formValues['Crypt'] = Util::encryptAes($queryStr, $settings->getFormEncryptionPassword($env));
-                // Encrypt order details using base64 and the secret key from the settings.
-                return $formValues;
-
             case SAGEPAY_SERVER:
                 $query['NotificationURL'] = $settings->getFullServerNotificationUrl();
                 $query['TxType'] = $txType;
@@ -260,31 +238,6 @@ class Common
                 $query += self::_setAuxValue($query, 'AccountType', $settings->getAccountType());
                 return $query;
 
-            case SAGEPAY_DIRECT:
-                $query = array_merge($query, self::_getCardDetails($paneValues));
-                $query['TxType'] = $txType;
-                $query['CardHolder'] = $billingAddress->firstname . ' ' . $billingAddress->lastname;
-
-                // Add 3D Secure flag only if the 3d Secure module is enabled for DIRECT.
-                $query['Apply3DSecure'] = $settings->getApply3dSecure();
-                $query += self::_setAuxValue($query, 'AccountType', $settings->getAccountType());
-                return $query;
-
-            case SAGEPAY_PAYPAL:
-                $query['TxType'] = $txType;
-                $query['CardType'] = 'PAYPAL';
-                $query['PayPalCallbackURL'] = $settings->getPaypalCallbackUrl() . '?vtx=' . $query['VendorTxCode'];
-                return $query;
-
-            case SAGEPAY_TOKEN:
-                $query['TxType'] = $txType;
-                $query['Token'] = $paneValues['token'];
-                $query['CV2'] = $paneValues['cv2'];
-                $query['AllowGiftAid'] = $paneValues['giftAid'] ? 1 : 0;
-                $query += self::_setAuxValue($query, 'AccountType', $settings->getAccountType());
-                $query['StoreToken'] = 1;
-                $query['ApplyAVSCV2'] = 2;
-                return $query;
             default :
                 throw new ApiException('Invalid integration type');
         }
