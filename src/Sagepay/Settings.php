@@ -1069,26 +1069,6 @@ class Settings {
     }
 
     /**
-     * Get value of PayPal Callback URL
-     *
-     * @return string PayPal Callback URL
-     */
-    public function getPaypalCallbackUrl()
-    {
-        return $this->_paypalCallbackUrl;
-    }
-
-    /**
-     * Set value of PayPal Callback URL
-     *
-     * @param string $paypalCallbackUrl PayPal Callback URL
-     */
-    public function setPaypalCallbackUrl($paypalCallbackUrl)
-    {
-        $this->_paypalCallbackUrl = $paypalCallbackUrl;
-    }
-
-    /**
      * Get list of Registration Service
      *
      * @return array List of Registration Service
