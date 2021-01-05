@@ -106,13 +106,11 @@ class Controller extends \PaymentMethodController {
     $result = $api->createRequest();
     if ($result['Status'] == 'OK') {
       $payment->setStatus(new \PaymentStatusItem(PAYMENT_STATUS_PENDING));
-      entity_save('payment', $payment);
-      $params = array(
-        'pid' => $payment->pid,
+      $payment->sagepay = [
         'securitykey' => $result['SecurityKey'],
         'vpstxid' => $result['VPSTxId'],
-      );
-      drupal_write_record('sagepay_payment_payments', $params);
+      ];
+      entity_save('payment', $payment);
       $payment->contextObj->redirect($result['NextURL']);
     }
     else {
