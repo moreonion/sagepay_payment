@@ -1,5 +1,6 @@
 <?php
 
+use Drupal\sagepay_payment\Controller;
 use Drupal\sagepay_payment\NotificationStatus;
 
 /**
@@ -157,4 +158,38 @@ function sagepay_payment_check_hash($payment, $hash) {
  */
 function sagepay_payment_finish_callback($payment) {
   $payment->finish();
+}
+
+/**
+ * Implements hook_payment_insert().
+ */
+function sagepay_payment_payment_payment_insert(\Payment $payment) {
+  if ($payment->method->controller instanceof Controller) {
+    if (!empty($payment->sagepay)) {
+      $data = $payment->sagepay;
+      $data['pid'] = $payment->pid;
+      db_insert('sagepay_payment_payments')->fields($data)->execute();
+    }
+  }
+}
+
+/**
+ * Implements hook_payment_update().
+ */
+function sagepay_payment_payment_update(\Payment $payment) {
+  if ($payment->method->controller instanceof Controller) {
+    if (!empty($payment->sagepay)) {
+      db_merge('sagepay_payment_payments')
+        ->key(['pid' => $payment->pid])
+        ->fields($payment->sagepay)
+        ->execute();
+    }
+  }
+}
+
+/**
+ * Implements hook_payment_delete().
+ */
+function sagepay_payment_payment_delete(\Payment $payment) {
+  db_delete('sagepay_payment_payments')->condition('pid', $payment->pid)->execute();
 }

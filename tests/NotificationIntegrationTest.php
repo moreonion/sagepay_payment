@@ -10,7 +10,7 @@ class NotificationIntegrationTest extends \DrupalWebTestCase {
   /**
    * Create a test payment and payment method.
    */
-  public function setUp() {
+  public function setUp() : void {
     $method = new \PaymentMethod([
       'controller' => new Controller(),
       'controller_data' => ['vendorname' => 'vendor1'],
@@ -34,7 +34,7 @@ class NotificationIntegrationTest extends \DrupalWebTestCase {
   /**
    * Remove the test data.
    */
-  public function tearDown() {
+  public function tearDown() : void {
     entity_delete('payment', $this->payment->pid);
     entity_delete('payment_method', $this->payment->method->pmid);
     db_delete('sagepay_payment_payments')
