@@ -161,6 +161,22 @@ function sagepay_payment_finish_callback($payment) {
 }
 
 /**
+ * Implements hook_entity_load().
+ */
+function sagepay_payment_entity_load(array $entities, $entity_type) {
+  if ($entity_type == 'payment') {
+    $q = db_select('sagepay_payment_payments', 't');
+    $q->fields('t')->condition('t.pid', array_keys($entities));
+    $result = $q->execute();
+    while ($data = $result->fetchAssoc()) {
+      $payment = $entities[$data['pid']];
+      unset($data['pid']);
+      $payment->sagepay = $data;
+    }
+  }
+}
+
+/**
  * Implements hook_payment_insert().
  */
 function sagepay_payment_payment_payment_insert(\Payment $payment) {
