@@ -179,7 +179,7 @@ function sagepay_payment_entity_load(array $entities, $entity_type) {
 /**
  * Implements hook_payment_insert().
  */
-function sagepay_payment_payment_payment_insert(\Payment $payment) {
+function sagepay_payment_payment_insert(\Payment $payment) {
   if ($payment->method->controller instanceof Controller) {
     if (!empty($payment->sagepay)) {
       $data = $payment->sagepay;

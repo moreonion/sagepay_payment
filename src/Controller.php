@@ -130,4 +130,20 @@ class Controller extends \PaymentMethodController {
     }
   }
 
+  /**
+   * Define columns for the webform data export.
+   */
+  public function webformDataInfo() {
+    $info['transaction_id'] = t('Transaction ID');
+    return $info;
+  }
+
+  /**
+   * Generate data for the webform export.
+   */
+  public function webformData(\Payment $payment) {
+    $data['transaction_id'] = $payment->sagepay['vpstxid'] ?? '';
+    return $data;
+  }
+
 }
